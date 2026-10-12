@@ -161,7 +161,37 @@
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.9);
   }
   .vm__name { font-family: var(--sc-font-display); font-weight: 700; font-size: 1.45rem; letter-spacing: -0.02em; color: var(--sc-ink); white-space: nowrap; margin: 0; }
-  .vm__fact { color: #B9BECA; font-size: 1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vm__fact { flex: 1; min-width: 0; color: #B9BECA; font-size: 1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tf {
+    flex: none; display: inline-flex; align-items: center; gap: 0.4em;
+    padding: 0.3em 0.7em; border-radius: var(--sc-r-pill);
+    background: #E8F5EC; color: #0E3B22;
+    font-size: 0.8rem; font-weight: 500; white-space: nowrap;
+  }
+  .tf svg { width: 0.95em; height: 0.95em; }
+  .pick {
+    flex: none; margin-left: auto; min-height: 44px; padding: 0 var(--sc-4);
+    display: inline-flex; align-items: center; gap: var(--sc-2);
+    border: 0; border-radius: var(--sc-r-pill); cursor: pointer;
+    background: transparent; color: var(--sc-ink); font-weight: 500; white-space: nowrap;
+    box-shadow: inset 0 0 0 1px var(--sc-hairline-strong);
+    transition: background-color 160ms var(--sc-ease-out), color 160ms var(--sc-ease-out), transform 120ms var(--sc-ease-out);
+  }
+  .pick::before {
+    content: ""; width: 1.05rem; height: 1.05rem; border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px currentColor;
+  }
+  .pick[aria-pressed="true"] { background: var(--sc-accent); color: var(--sc-accent-ink); box-shadow: none; }
+  .pick[aria-pressed="true"]::before {
+    box-shadow: none;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3L13 4.8' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3L13 4.8' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+  }
+  .pick:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { .pick[aria-pressed="false"]:hover { background: rgba(255,255,255,0.08); } }
+  .vm__row img { transition: opacity 260ms var(--sc-ease-out), filter 260ms var(--sc-ease-out); }
+  .vm__row.is-off img { opacity: 0.32; filter: grayscale(0.85); }
   .vm__glare {
     position: absolute; inset: 0; pointer-events: none; z-index: 2;
     background:
@@ -223,7 +253,28 @@
     .vm__code { width: 2.1rem; height: 2.1rem; font-size: 0.95rem; }
     .vm__name { font-size: 1.1rem; }
     .vm__fact { display: none; }
+    .tf { padding: 0.35em; }
+    .tf span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .pick { padding: 0 var(--sc-3); font-size: var(--sc-t-sm); }
   }
+  .key.is-picked::after {
+    content: ""; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--led);
+  }
+  .key { position: relative; }
+  .pick .l-short { display: none; }
+  @media (max-width: 860px) { .pick .l-long { display: none; } .pick .l-short { display: inline; } }
+  .shelves__sub { margin-top: var(--sc-4); color: #D5D8DF; max-width: 34ch; }
+  .mine { list-style: none; margin: var(--sc-5) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sc-2); }
+  .mine li {
+    display: inline-flex; align-items: center; gap: var(--sc-2);
+    padding: var(--sc-1) var(--sc-3) var(--sc-1) var(--sc-1); border-radius: var(--sc-r-pill);
+    background: color-mix(in oklab, var(--sc-surface) 88%, transparent); box-shadow: inset 0 0 0 1px var(--sc-hairline);
+    font-size: var(--sc-t-sm); color: var(--sc-ink);
+  }
+  .mine b { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #07080A; color: var(--led); font-family: var(--sc-font-mono); font-weight: 500; font-size: 0.8rem; }
+  .mine__label { margin-top: var(--sc-6); font-size: var(--sc-t-sm); color: #C3C8D2; }
+  .mine__edit { color: var(--sc-ink); }
 
   /* ------------------------------------------------------------- 1 hero -- */
   .hero .sc-stage { background: var(--sc-canvas); }
@@ -272,7 +323,7 @@
   .trust__fig { margin: 0; border-radius: var(--sc-r-lg); overflow: hidden; box-shadow: var(--sc-e3); aspect-ratio: 4 / 5; }
   .trust__fig img { width: 100%; height: 100%; object-fit: cover; object-position: 30% 50%; }
   @media (max-width: 860px) {
-    .trust__grid { grid-template-columns: 1fr; gap: var(--sc-7); }
+    .trust__grid { grid-template-columns: minmax(0, 1fr); gap: var(--sc-7); }
     .trust__fig { aspect-ratio: 4 / 3; }
   }
 
@@ -327,7 +378,7 @@
   .ask__err { margin-top: var(--sc-2); font-size: var(--sc-t-sm); color: #FF9A73; min-height: 1.4em; }
   @keyframes print { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
   @media (max-width: 860px) {
-    .request__grid { grid-template-columns: 1fr; gap: var(--sc-6); }
+    .request__grid { grid-template-columns: minmax(0, 1fr); gap: var(--sc-6); }
     .ask { padding: var(--sc-5); }
   }
 
@@ -397,7 +448,7 @@
       <div class="hero__fg" aria-hidden="true"></div>
       <div class="sc-copy sc-copy--lead hero__copy" data-sc-cue="0 0.6 0">
         <h1 class="sc-display" data-sc-kinetic="lines">Press any button.</h1>
-        <p class="hero__sub">A vending machine for your office where every product has passed independent lab tests. So nothing in it needs a second thought.</p>
+        <p class="hero__sub">A vending machine for your office, stocked only with the better pick: zero-sugar drinks, light snacks and lab-tested protein. Nothing in it needs a second thought.</p>
         <a class="btn hero__cta js-cta" href="#get">Get a machine</a>
       </div>
     </div>
@@ -422,8 +473,8 @@
     <div class="sc-wrap trust__grid">
       <div class="sc-stack" data-sc-in data-sc-stagger="70">
         <h2 class="sc-display sc-display--lg">We did the second-guessing.</h2>
-        <p class="sc-lede">One rule decides what gets a slot: the product holds a Trustified certificate, meaning an independent lab has tested that what's inside matches the label.</p>
-        <p class="sc-body">If it hasn't passed, it isn't in the machine. So whatever you press, you already chose well.</p>
+        <p class="sc-lede">Every shelf holds the better option in its aisle. And protein, where labels matter most, only gets a slot with a Trustified pass: an independent lab test that what's inside matches the label.</p>
+        <p class="sc-body">No pass, no slot. So whatever you press, you already chose well.</p>
       </div>
       <figure class="trust__fig" data-sc-reveal="up" data-sc-reveal-at="0.12 0.5">
         <img src="assets/shelf-b.webp" width="1600" height="900" alt="Cold, unbranded zero-sugar cans standing in a vending machine's spiral coils, beaded with condensation.">
@@ -441,23 +492,23 @@
             <div class="vm__glass">
               <div class="vm__row" id="row-a">
                 <img src="assets/shelf-a.webp" alt="Clear pouches of roasted makhana alternating with kraft-wrapped peanut chikki, each in a steel coil.">
-                <div class="vm__rail"><span class="vm__code">A</span><h3 class="vm__name">Makhana &amp; chikki</h3><p class="vm__fact">Roasted makhana. Peanut chikki. Desk-sized packs.</p></div>
+                <div class="vm__rail"><span class="vm__code">A</span><h3 class="vm__name">Makhana &amp; chikki</h3><p class="vm__fact">Roasted makhana. Peanut chikki. Desk-sized packs.</p><button class="pick" type="button" data-pick="0" aria-pressed="true">In my machine</button></div>
               </div>
               <div class="vm__row" id="row-b">
                 <img src="assets/shelf-b.webp" alt="Slim zero-sugar cans in black, silver, white, mint and orange.">
-                <div class="vm__rail"><span class="vm__code">B</span><h3 class="vm__name">Zero-sugar fizz</h3><p class="vm__fact">Cola, lemon-lime, Indian flavours. Zero sugar. Served cold.</p></div>
+                <div class="vm__rail"><span class="vm__code">B</span><h3 class="vm__name">Zero-sugar fizz</h3><p class="vm__fact">Cola, lemon-lime, Indian flavours. Zero sugar. Served cold.</p><button class="pick" type="button" data-pick="1" aria-pressed="true">In my machine</button></div>
               </div>
               <div class="vm__row" id="row-c">
                 <img src="assets/shelf-c.webp" alt="Chilled yogurt cups with foil lids alternating with protein shake bottles.">
-                <div class="vm__rail"><span class="vm__code">C</span><h3 class="vm__name">Yogurt &amp; shakes</h3><p class="vm__fact">High-protein yogurt and ready-to-drink shakes. Kept chilled.</p></div>
+                <div class="vm__rail"><span class="vm__code">C</span><h3 class="vm__name">Yogurt &amp; shakes</h3><span class="tf" title="Every product on this shelf holds a published Trustified lab pass"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Trustified-tested</span></span><p class="vm__fact">High-protein yogurt and shakes. Kept chilled.</p><button class="pick" type="button" data-pick="2" aria-pressed="true">In my machine</button></div>
               </div>
               <div class="vm__row" id="row-d">
                 <img src="assets/shelf-d.webp" alt="Stacks of protein bars in red, green, blue, yellow and charcoal wrappers.">
-                <div class="vm__rail"><span class="vm__code">D</span><h3 class="vm__name">Protein bars</h3><p class="vm__fact">Bars and wafers, protein first.</p></div>
+                <div class="vm__rail"><span class="vm__code">D</span><h3 class="vm__name">Protein bars</h3><span class="tf" title="Every product on this shelf holds a published Trustified lab pass"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Trustified-tested</span></span><p class="vm__fact">Bars and wafers, protein first.</p><button class="pick" type="button" data-pick="3" aria-pressed="true">In my machine</button></div>
               </div>
               <div class="vm__row" id="row-e">
                 <img src="assets/shelf-e.webp" alt="Snack pouches of protein puffs and baked nachos in bright colours.">
-                <div class="vm__rail"><span class="vm__code">E</span><h3 class="vm__name">Puffs &amp; nachos</h3><p class="vm__fact">Protein puffs, baked nachos. For the salty craving.</p></div>
+                <div class="vm__rail"><span class="vm__code">E</span><h3 class="vm__name">Puffs &amp; nachos</h3><p class="vm__fact">Protein puffs, baked nachos. For the salty craving.</p><button class="pick" type="button" data-pick="4" aria-pressed="true">In my machine</button></div>
               </div>
               <div class="vm__glare" aria-hidden="true"></div>
             </div>
@@ -475,7 +526,8 @@
         </div>
       </div>
       <div class="sc-copy sc-copy--lead shelves__head" data-sc-cue="0 0.1 0 0.04">
-        <h2 class="sc-display sc-display--lg">Five shelves. No wrong buttons.</h2>
+        <h2 class="sc-display sc-display--lg">Five shelves. Pick yours.</h2>
+        <p class="sc-lede shelves__sub">There are no wrong buttons. Keep the shelves your office wants and we fill the machine with them.</p>
       </div>
     </div>
   </section>
@@ -514,6 +566,7 @@
       <div class="sc-copy sc-copy--lead close__copy">
         <h2 class="sc-display sc-display--lg" data-sc-cue="0 1 0 0" data-sc-kinetic="lines">Put one in your office.</h2>
         <p class="sc-lede" data-sc-cue="0 1 0 0">We install it, stock it and refill it. Your team just presses buttons.</p>
+        <div data-sc-cue="0 1 0 0"><p class="mine__label">Your machine <a class="mine__edit" href="#shelves">(change shelves)</a></p><ul class="mine" id="mine"></ul></div>
         <a class="btn js-cta js-mail" href="#get" data-sc-cue="0 1 0 0" data-sc-rise="0">Get a machine</a>
       </div>
       <footer class="foot">Sorted is a concept in development. Trustified is an independent certification and is not affiliated with Sorted. Product images are illustrative, unbranded renders.</footer>
@@ -525,7 +578,7 @@
 <script src="scrollcraft.js"></script>
 <script>
 /* Set this to the inbox that should receive machine requests. */
-const CONTACT_EMAIL = "";
+const CONTACT_EMAIL = "thebrainpuddle@gmail.com";
 
 (function () {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -559,12 +612,8 @@ const CONTACT_EMAIL = "";
   $$("[id]", heroVm).forEach((n) => n.removeAttribute("id"));
   $$("img", heroVm).forEach((n) => { n.alt = ""; n.loading = "eager"; });
   $$("h3", heroVm).forEach((h) => { const s = document.createElement("span"); s.className = h.className; s.textContent = h.textContent; h.replaceWith(s); });
+  $$(".pick", heroVm).forEach((b) => b.remove());
   $(".hero__machine").appendChild(heroVm);
-
-  const mail = CONTACT_EMAIL
-    ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("A Sorted machine for our office")}`
-    : `mailto:?subject=${encodeURIComponent("A Sorted machine for our office")}`;
-  $$(".js-mail").forEach((a) => (a.href = mail));
 
   ScrollCraft.mount(document.body);
 
@@ -585,7 +634,7 @@ const CONTACT_EMAIL = "";
     const dock = small.matches ? parseFloat(getComputedStyle(document.documentElement).fontSize) * 7.25 : 0;
     // hero machine: tall on the right on desktop, low and centred on phones
     const hs = small.matches ? Math.min((vh * 0.5) / MH, (vw * 0.5) / MW) : Math.min((vh * 0.74) / MH, (vw * 0.3) / MW);
-    const hx = small.matches ? (vw - MW * hs) / 2 : vw * 0.69 - (MW * hs) / 2;
+    const hx = small.matches ? (vw - MW * hs) / 2 : vw * 0.6 - (MW * hs) / 2;
     const hy = small.matches ? vh - dock - MH * hs - vh * 0.03 : vh * 0.15;
     G = { vw, vh, MW, MH, rows, gx, dock, hs, hx, hy,
       s0: Math.min((vh * 0.78) / MH, (vw * (small.matches ? 0.7 : 0.4)) / MW) };
@@ -681,6 +730,56 @@ const CONTACT_EMAIL = "";
       lastAny = i; vend(i, true);
     } else vend(+k.dataset.key, false);
   }));
+
+  /* ------------------------------------------------------ your machine -- */
+  const picks = $$(".pick", vm);
+  const rowSets = [$$(".vm__row", vm), $$(".vm__row", heroVm)];
+  const mine = $("#mine");
+  let chosen = [true, true, true, true, true];
+  try {
+    const saved = JSON.parse(localStorage.getItem("sorted-shelves"));
+    if (Array.isArray(saved) && saved.length === 5 && saved.some(Boolean)) chosen = saved.map(Boolean);
+  } catch (e) {}
+
+  function mailHref() {
+    const list = ROWS.filter((r, i) => chosen[i]).map((r) => `${r.code} · ${r.name}`).join("\n");
+    const body = `Hi,\n\nWe'd like a Sorted machine for our office.\n\nShelves we picked:\n${list}\n\nCompany:\nCity:\nTeam size:\n`;
+    return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("A Sorted machine for our office")}&body=${encodeURIComponent(body)}`;
+  }
+
+  function renderPicks() {
+    picks.forEach((b, i) => {
+      b.setAttribute("aria-pressed", String(chosen[i]));
+      b.innerHTML = chosen[i] ? '<span class="l-long">In my machine</span><span class="l-short">Added</span>'
+                              : '<span class="l-long">Add to my machine</span><span class="l-short">Add</span>';
+    });
+    rowSets.forEach((rows) => rows.forEach((r, i) => r.classList.toggle("is-off", !chosen[i])));
+    keys.forEach((k, i) => k.classList.toggle("is-picked", chosen[i]));
+    mine.replaceChildren(...ROWS.filter((r, i) => chosen[i]).map((r) => {
+      const li = document.createElement("li");
+      const b = document.createElement("b"); b.textContent = r.code;
+      li.append(b, r.name);
+      return li;
+    }));
+    $$(".js-mail").forEach((a) => (a.href = mailHref()));
+  }
+
+  picks.forEach((b, i) => {
+    b.setAttribute("aria-label", `Shelf ${ROWS[i].code}, ${ROWS[i].name}, in my machine`);
+    b.addEventListener("click", () => {
+      if (chosen[i] && chosen.filter(Boolean).length === 1) {
+        setLed("Keep at least one shelf", 2200);
+        live.textContent = "Keep at least one shelf in the machine.";
+        return;
+      }
+      chosen[i] = !chosen[i];
+      try { localStorage.setItem("sorted-shelves", JSON.stringify(chosen)); } catch (e) {}
+      renderPicks();
+      setLed(`${ROWS[i].code} · ${chosen[i] ? "added" : "removed"}`, 1800);
+      live.textContent = `Shelf ${ROWS[i].code}, ${ROWS[i].name}, ${chosen[i] ? "added to" : "removed from"} your machine.`;
+    });
+  });
+  renderPicks();
 
   /* ------------------------------------------------------------ frame -- */
   function frame() {
