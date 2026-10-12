@@ -1,0 +1,7 @@
+# raw generations and verification captures stay local
+out/
+lab/
+node_modules/
+.env
+.env.*
+.DS_Store

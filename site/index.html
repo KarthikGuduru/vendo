@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sorted · Press any button</title>
+<meta name="description" content="A vending machine for offices where every product has passed independent lab testing. Zero sugar drinks, protein snacks, makhana. Press any button.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0C11'/><circle cx='16' cy='16' r='6' fill='%23FF5A1F'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Geist:wght@400;500&family=Geist+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="scrollcraft.css">
+<style>
+  :root {
+    --sc-canvas:     #0A0C11;
+    --sc-surface:    #12151C;
+    --sc-ink:        #F3F1EC;
+    --sc-ink-soft:   #A7ADBA;
+    --sc-accent:     #FF5A1F;
+    --sc-accent-ink: #160904;
+    --sc-font-display: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
+    --sc-font-text:    "Geist", system-ui, sans-serif;
+    --sc-font-mono:    "Geist Mono", ui-monospace, monospace;
+    --sc-shadow-color: 224 40% 3%;
+
+    --led: #FF5A1F;
+    --steel: #1A1E26;
+    --steel-hi: #2A303B;
+    --dock-h: 0px;
+  }
+  .sc-display { font-weight: 700; font-variation-settings: "opsz" 96; }
+  .sc-display--md { font-weight: 500; }
+  body { letter-spacing: 0; }
+
+  /* ------------------------------------------------------------ chrome -- */
+  .bar {
+    position: fixed; inset: 0 0 auto 0; z-index: var(--sc-z-chrome);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--sc-4) var(--sc-gutter);
+    pointer-events: none;
+  }
+  .bar > * { pointer-events: auto; }
+  .mark {
+    font-family: var(--sc-font-display); font-weight: 700; font-size: 1.35rem;
+    letter-spacing: -0.03em; text-decoration: none; color: var(--sc-ink);
+  }
+  .mark i { font-style: normal; color: var(--led); }
+  .btn {
+    display: inline-flex; align-items: center; gap: var(--sc-2);
+    min-height: 44px; padding: 0 var(--sc-5);
+    border-radius: var(--sc-r-pill);
+    background: var(--sc-accent); color: var(--sc-accent-ink);
+    font-weight: 500; text-decoration: none; white-space: nowrap;
+    box-shadow: var(--sc-e2);
+    transition: transform 140ms var(--sc-ease-out), background-color 160ms var(--sc-ease-out);
+  }
+  .btn:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { .btn:hover { background: #FF7240; } }
+  .btn--ghost {
+    background: color-mix(in oklab, var(--sc-canvas) 55%, transparent);
+    color: var(--sc-ink); box-shadow: inset 0 0 0 1px var(--sc-hairline-strong);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  @media (hover: hover) and (pointer: fine) { .btn--ghost:hover { background: color-mix(in oklab, var(--sc-surface) 85%, transparent); } }
+
+  /* The keypad: the page's navigation, and its signature move. */
+  .pad {
+    position: fixed; z-index: var(--sc-z-chrome);
+    right: var(--sc-gutter); bottom: var(--sc-5);
+    width: 15.5rem; padding: var(--sc-3);
+    border-radius: var(--sc-r-lg);
+    background: linear-gradient(180deg, #1B1F28, #12151C);
+    box-shadow: var(--sc-e3), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .pad__led {
+    height: 2.5rem; display: flex; align-items: center; overflow: hidden;
+    padding: 0 var(--sc-3); border-radius: var(--sc-r-sm);
+    background: #07080A;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
+    font-family: var(--sc-font-mono); font-size: 0.78rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--led); white-space: nowrap;
+  }
+  .pad__led span { display: block; transition: opacity 160ms var(--sc-ease-out), transform 160ms var(--sc-ease-out); }
+  .pad__led.is-swap span { opacity: 0; transform: translateY(6px); }
+  .pad__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sc-2); margin-top: var(--sc-3); }
+  .key {
+    min-height: 44px; border: 0; border-radius: var(--sc-r-md); cursor: pointer;
+    background: linear-gradient(180deg, #2A303B, #1F242D);
+    box-shadow: 0 2px 0 #0B0D11, inset 0 1px 0 rgba(255,255,255,0.09);
+    font-family: var(--sc-font-mono); font-size: 0.95rem; color: var(--sc-ink);
+    transition: transform 100ms var(--sc-ease-out), box-shadow 100ms var(--sc-ease-out), color 160ms var(--sc-ease-out);
+  }
+  .key:active { transform: translateY(2px); box-shadow: 0 0 0 #0B0D11, inset 0 1px 0 rgba(255,255,255,0.05); }
+  .key[aria-current="true"] { color: var(--led); box-shadow: 0 2px 0 #0B0D11, inset 0 0 0 1px color-mix(in oklab, var(--led) 70%, transparent); }
+  .key--any { background: linear-gradient(180deg, #FF6A33, #E94C14); color: var(--sc-accent-ink); font-family: var(--sc-font-text); font-weight: 500; font-size: 0.85rem; }
+  @media (hover: hover) and (pointer: fine) { .key:hover { color: var(--led); } .key--any:hover { color: var(--sc-accent-ink); background: linear-gradient(180deg, #FF7A47, #F0571F); } }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  @media (max-width: 860px) {
+    :root { --dock-h: 7.25rem; }
+    .bar .btn { min-height: 40px; padding: 0 var(--sc-4); font-size: var(--sc-t-sm); }
+    .pad { left: var(--sc-3); right: var(--sc-3); bottom: max(var(--sc-3), env(safe-area-inset-bottom)); width: auto; padding: var(--sc-2); }
+    .pad__led { height: 2.1rem; font-size: 0.72rem; }
+    .pad__keys { grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: var(--sc-2); }
+    .key { min-height: 44px; }
+  }
+
+  /* ----------------------------------------------------------- machine -- */
+  /* Laid out at the zoomed-in size and scaled DOWN for the overview, so the
+     shelf photographs are never upscaled. */
+  .vm {
+    --g: min(82vw, 1180px);
+    --ra: 2.8;
+    --row: calc(var(--g) / var(--ra));
+    --rail: 4.25rem;
+    --side: calc(var(--g) * 0.25);
+    --frame: calc(var(--g) * 0.022);
+    position: absolute; left: 0; top: 0; transform-origin: 0 0;
+    width: calc(var(--g) + var(--side) + var(--frame) * 3);
+    padding: var(--frame);
+    border-radius: calc(var(--frame) * 1.6);
+    background: linear-gradient(90deg, #12151B 0%, #20252E 8%, #181C23 60%, #262B35 96%, #14171D 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 60px 120px -30px rgba(0,0,0,0.9), 0 0 0 1px #07080B;
+  }
+  .vm__crown {
+    height: calc(var(--g) * 0.09); margin-bottom: var(--frame);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: calc(var(--frame) * 0.8);
+    background: radial-gradient(120% 140% at 50% 0%, #2A2F3A, #0D0F14);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  .vm__sign {
+    font-family: var(--sc-font-display); font-weight: 700;
+    font-size: calc(var(--g) * 0.05); letter-spacing: -0.035em; color: #F6F3EE;
+    text-shadow: 0 0 calc(var(--g) * 0.02) rgba(255,255,255,0.35);
+  }
+  .vm__sign i { font-style: normal; color: var(--led); }
+  .vm__body { display: flex; gap: var(--frame); }
+  .vm__glass {
+    position: relative; width: var(--g); flex: none; overflow: hidden;
+    border-radius: calc(var(--frame) * 0.8);
+    background: #05070A;
+    box-shadow: inset 0 0 0 2px #2B313C, inset 0 0 40px rgba(0,0,0,0.9);
+  }
+  .vm__row { position: relative; }
+  .vm__row img {
+    display: block; width: 100%; max-width: none; height: var(--row); object-fit: cover; object-position: 50% 74%;
+  }
+  .vm__rail {
+    height: var(--rail); display: flex; align-items: center; gap: var(--sc-4);
+    padding: 0 var(--sc-5);
+    background: linear-gradient(180deg, #2B313B, #1A1E25 45%, #14171D);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 6px 14px rgba(0,0,0,0.6);
+    position: relative; z-index: 1;
+  }
+  .vm__code {
+    flex: none; display: grid; place-items: center;
+    width: 2.6rem; height: 2.6rem; border-radius: 8px;
+    background: #07080A; color: var(--led);
+    font-family: var(--sc-font-mono); font-size: 1.15rem; font-weight: 500;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.9);
+  }
+  .vm__name { font-family: var(--sc-font-display); font-weight: 700; font-size: 1.45rem; letter-spacing: -0.02em; color: var(--sc-ink); white-space: nowrap; margin: 0; }
+  .vm__fact { color: #B9BECA; font-size: 1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vm__glare {
+    position: absolute; inset: 0; pointer-events: none; z-index: 2;
+    background:
+      linear-gradient(105deg, transparent 0 calc(18% + var(--glare, 0%)), rgba(255,255,255,0.07) calc(22% + var(--glare, 0%)), transparent calc(30% + var(--glare, 0%))),
+      linear-gradient(105deg, transparent 0 calc(48% + var(--glare, 0%)), rgba(255,255,255,0.04) calc(50% + var(--glare, 0%)), transparent calc(56% + var(--glare, 0%)));
+  }
+  .vm__side {
+    width: var(--side); flex: none; display: flex; flex-direction: column; gap: calc(var(--side) * 0.07);
+    padding: calc(var(--side) * 0.08);
+    border-radius: calc(var(--frame) * 0.8);
+    background: linear-gradient(180deg, #1C2029, #14171D);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .vm__led {
+    height: calc(var(--side) * 0.2); display: grid; place-items: center;
+    border-radius: 6px; background: #07080A;
+    font-family: var(--sc-font-mono); font-size: calc(var(--side) * 0.075); letter-spacing: 0.1em; color: var(--led);
+  }
+  .vm__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--side) * 0.045); }
+  .vm__keys span {
+    aspect-ratio: 1.35; display: grid; place-items: center; border-radius: 6px;
+    background: linear-gradient(180deg, #2A303B, #1F242D);
+    box-shadow: 0 2px 0 #0B0D11, inset 0 1px 0 rgba(255,255,255,0.08);
+    font-family: var(--sc-font-mono); font-size: calc(var(--side) * 0.07); color: #C9CDD6;
+  }
+  .vm__keys span:last-child { background: linear-gradient(180deg, #FF6A33, #E94C14); color: var(--sc-accent-ink); }
+  .vm__slot { height: calc(var(--side) * 0.05); margin-inline: 22%; border-radius: 99px; background: #050608; box-shadow: inset 0 1px 2px #000; }
+  .vm__qr {
+    margin-top: auto; padding: calc(var(--side) * 0.06); border-radius: 8px; background: #F3F1EC; color: #12151C;
+    display: grid; gap: calc(var(--side) * 0.04); justify-items: center;
+  }
+  .vm__qr svg { width: 70%; height: auto; }
+  .vm__qr b { font-family: var(--sc-font-display); font-size: calc(var(--side) * 0.075); letter-spacing: -0.01em; line-height: 1.1; text-align: center; }
+  .vm__tray {
+    margin-top: var(--frame); height: calc(var(--g) * 0.13);
+    display: flex; gap: var(--frame);
+  }
+  .vm__tray > div {
+    width: var(--g); border-radius: calc(var(--frame) * 0.8);
+    background: linear-gradient(180deg, #0B0D11, #1A1E26);
+    box-shadow: inset 0 2px 0 #2B313C, inset 0 -20px 40px rgba(0,0,0,0.6);
+    display: grid; place-items: center;
+    font-family: var(--sc-font-mono); font-size: calc(var(--g) * 0.018); letter-spacing: 0.3em; color: #59606E;
+  }
+  .vm__tray > span { width: var(--side); }
+
+  .vm__row.is-vend img { animation: vend 900ms var(--sc-ease-out); }
+  .vm__row.is-vend::after {
+    content: ""; position: absolute; inset: 0 0 var(--rail) 0; pointer-events: none; z-index: 1;
+    background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%);
+    animation: sweep 900ms var(--sc-ease-out) forwards;
+  }
+  @keyframes vend { 0% { transform: none; } 18% { transform: translateY(-4px); } 40% { transform: translateY(2px); } 100% { transform: none; } }
+  @keyframes sweep { from { transform: translateX(-60%); opacity: 1; } to { transform: translateX(60%); opacity: 0; } }
+
+  @media (max-width: 860px) {
+    .vm { --g: 92vw; --ra: 2.05; --rail: 3.5rem; }
+    .vm__rail { gap: var(--sc-3); padding: 0 var(--sc-3); }
+    .vm__code { width: 2.1rem; height: 2.1rem; font-size: 0.95rem; }
+    .vm__name { font-size: 1.1rem; }
+    .vm__fact { display: none; }
+  }
+
+  /* ------------------------------------------------------------- 1 hero -- */
+  .hero .sc-stage { background: var(--sc-canvas); }
+  .hero__bg, .hero__fg { position: absolute; inset: -4%; width: 108%; height: 108%; max-width: none; }
+  .hero__bg img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; }
+  .hero__machine { position: absolute; left: 0; top: 0; }
+  .hero__machine .vm { position: relative; }
+  .hero__floor {
+    position: absolute; pointer-events: none;
+    background: radial-gradient(50% 50% at 50% 50%, rgba(205,225,255,0.22), transparent 70%);
+    filter: blur(6px);
+  }
+  .hero__fg {
+    background: #050608;
+    -webkit-mask: url("assets/leaves.webp") center bottom / cover no-repeat;
+            mask: url("assets/leaves.webp") center bottom / cover no-repeat;
+    filter: blur(2.5px);
+    pointer-events: none; z-index: 5;
+  }
+  .hero__scrim { z-index: 4; }
+  .hero__copy { z-index: 10; max-width: min(40rem, 52vw); }
+  .hero h1 { font-size: clamp(3.2rem, 1.6rem + 6vw, 7.25rem); }
+  .hero__sub { margin-top: var(--sc-5); font-size: var(--sc-t-lg); line-height: 1.45; color: #D5D8DF; max-width: 34ch; text-wrap: pretty; }
+  .hero__cta { margin-top: var(--sc-6); }
+  @media (max-width: 860px) {
+    .hero .sc-copy--lead { top: calc(var(--sc-9) - 1rem); bottom: auto; max-width: none; }
+    .hero h1 { font-size: clamp(2.75rem, 12.5vw, 4rem); }
+    .hero__sub { font-size: var(--sc-t-base); }
+    .hero__cta { display: none; }
+  }
+
+  /* ---------------------------------------------------------- 2 pantry -- */
+  .pantry img.sc-stage__poster { object-position: 70% 50%; }
+  .lines { display: grid; }
+  .lines > * { grid-area: 1 / 1; align-self: end; }
+  .pantry .sc-display { max-width: 15ch; }
+  @media (max-width: 860px) {
+    .pantry .sc-copy--lead { bottom: calc(var(--dock-h) + var(--sc-6)); }
+  }
+
+  /* ----------------------------------------------------------- 3 trust -- */
+  .trust { padding-block: var(--sc-10) var(--sc-9); }
+  .trust__grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: var(--sc-9); align-items: center; }
+  .trust h2 { max-width: 12ch; }
+  .trust .sc-lede { max-width: 40ch; }
+  .trust__fig { margin: 0; border-radius: var(--sc-r-lg); overflow: hidden; box-shadow: var(--sc-e3); aspect-ratio: 4 / 5; }
+  .trust__fig img { width: 100%; height: 100%; object-fit: cover; object-position: 30% 50%; }
+  @media (max-width: 860px) {
+    .trust__grid { grid-template-columns: 1fr; gap: var(--sc-7); }
+    .trust__fig { aspect-ratio: 4 / 3; }
+  }
+
+  /* --------------------------------------------------------- 4 shelves -- */
+  .shelves .sc-stage { background: radial-gradient(70% 60% at 50% 45%, #121620, var(--sc-canvas) 70%); }
+  .shelves__cam { position: absolute; inset: 0; }
+  .shelves__head { z-index: 10; }
+  .shelves__head .sc-display { max-width: 12ch; }
+  @media (max-width: 860px) {
+    .shelves__head { top: calc(var(--sc-9) - 1rem); bottom: auto; }
+  }
+
+  /* ---------------------------------------------------------- 5 request -- */
+  .request { padding-block: var(--sc-8) var(--sc-9); }
+  .request__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sc-9); align-items: start; }
+  .request h2 { max-width: 13ch; }
+  .ask {
+    padding: var(--sc-6); border-radius: var(--sc-r-lg);
+    background: var(--sc-surface); box-shadow: var(--sc-e2), var(--sc-edge);
+  }
+  .ask label { display: block; font-weight: 500; margin-bottom: var(--sc-3); }
+  .ask__row { display: flex; gap: var(--sc-2); }
+  .ask input {
+    flex: 1; min-width: 0; min-height: 48px; padding: 0 var(--sc-4);
+    border-radius: var(--sc-r-md); border: 1px solid var(--sc-hairline-strong);
+    background: #0B0D12; color: var(--sc-ink);
+    transition: border-color 160ms var(--sc-ease-out);
+  }
+  .ask input::placeholder { color: #7D8494; }
+  .ask input:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 2px; border-color: transparent; }
+  .ask button.btn { border: 0; cursor: pointer; min-height: 48px; }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--sc-2); margin-top: var(--sc-4); }
+  .chip {
+    min-height: 36px; padding: 0 var(--sc-4); border-radius: var(--sc-r-pill); cursor: pointer;
+    border: 1px solid var(--sc-hairline-strong); background: transparent; color: var(--sc-ink-soft);
+    font-size: var(--sc-t-sm);
+    transition: color 160ms var(--sc-ease-out), border-color 160ms var(--sc-ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) { .chip:hover { color: var(--sc-ink); border-color: var(--sc-ink-soft); } }
+  .chip:active { transform: scale(0.97); }
+  .tickets { list-style: none; margin: var(--sc-5) 0 0; padding: 0; display: grid; gap: var(--sc-3); }
+  .ticket {
+    display: grid; grid-template-columns: auto 1fr; gap: var(--sc-1) var(--sc-4); align-items: baseline;
+    padding: var(--sc-4); border-radius: var(--sc-r-md);
+    background: #0B0D12; border: 1px dashed var(--sc-hairline-strong);
+    animation: print 420ms var(--sc-ease-out);
+  }
+  .ticket__no { font-family: var(--sc-font-mono); font-size: var(--sc-t-sm); color: var(--led); }
+  .ticket__item { font-weight: 500; overflow-wrap: anywhere; }
+  .ticket__eta { grid-column: 2; color: var(--sc-ink-soft); font-size: var(--sc-t-sm); }
+  .ask__note { margin-top: var(--sc-4); font-size: var(--sc-t-xs); color: #8C93A1; }
+  .ask__err { margin-top: var(--sc-2); font-size: var(--sc-t-sm); color: #FF9A73; min-height: 1.4em; }
+  @keyframes print { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 860px) {
+    .request__grid { grid-template-columns: 1fr; gap: var(--sc-6); }
+    .ask { padding: var(--sc-5); }
+  }
+
+  /* ------------------------------------------------------------ 6 close -- */
+  .close img.sc-stage__poster { object-position: 50% 70%; }
+  .close__copy { z-index: 10; }
+  .close__copy .btn { margin-top: var(--sc-6); }
+  .close__copy p.sc-lede { margin-top: var(--sc-4); color: #D5D8DF; }
+  .foot {
+    position: absolute; z-index: 10; left: var(--sc-gutter); right: calc(var(--sc-gutter) + 17rem); bottom: var(--sc-5);
+    font-size: var(--sc-t-xs); color: #8F96A4; max-width: 70ch;
+  }
+  @media (max-width: 860px) {
+    .close__copy { bottom: calc(var(--dock-h) + var(--sc-9)); }
+    .foot { right: var(--sc-gutter); bottom: calc(var(--dock-h) + var(--sc-4)); }
+  }
+
+  /* ---------------------------------------------------- reduced motion -- */
+  .rm .shelves { padding-block: var(--sc-9); }
+  .rm .shelves .sc-stage { position: relative; height: auto; overflow: visible; background: none; }
+  .rm .shelves__cam { position: relative; inset: auto; display: grid; justify-items: center; margin-top: var(--sc-7); }
+  .rm .shelves .vm { position: relative; transform: none !important; }
+  .rm .shelves__head { position: relative; inset: auto; padding-inline: var(--sc-gutter); }
+  @media (prefers-reduced-motion: reduce) {
+    .ticket { animation: none; }
+    .vm__row.is-vend img, .vm__row.is-vend::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<span data-sc-progress></span>
+<div class="sc-grain" aria-hidden="true"></div>
+
+<header class="bar">
+  <a class="mark" href="#top" aria-label="Sorted, back to top">Sorted<i>.</i></a>
+  <a class="btn btn--ghost js-cta" href="#get">Get a machine</a>
+</header>
+
+<nav class="pad" aria-label="Shelves">
+  <div class="pad__led" aria-hidden="true"><span id="led">Press any button</span></div>
+  <div class="pad__keys">
+    <button class="key" type="button" data-key="0" aria-label="Shelf A: makhana and chikki">A</button>
+    <button class="key" type="button" data-key="1" aria-label="Shelf B: zero-sugar drinks">B</button>
+    <button class="key" type="button" data-key="2" aria-label="Shelf C: yogurt and shakes">C</button>
+    <button class="key" type="button" data-key="3" aria-label="Shelf D: protein bars">D</button>
+    <button class="key" type="button" data-key="4" aria-label="Shelf E: puffs and nachos">E</button>
+    <button class="key key--any" type="button" data-key="any" aria-label="Any shelf, picked at random">Any</button>
+  </div>
+  <p class="sr" aria-live="polite" id="pad-live"></p>
+</nav>
+
+<main id="top">
+
+  <!-- 1 · SPARK -->
+  <section class="hero" id="hero" data-sc-act="pin" data-sc-span="2.1" data-sc-drift="#0A0C11">
+    <div data-sc-stage>
+      <div class="hero__bg">
+        <picture>
+          <source media="(max-width: 860px)" srcset="assets/hero-bg-p.webp">
+          <img src="assets/hero-bg.webp" alt="" fetchpriority="high">
+        </picture>
+      </div>
+      <div class="hero__floor" aria-hidden="true"></div>
+      <div class="hero__machine" aria-hidden="true"><!-- machine cloned here --></div>
+      <div class="sc-scrim sc-scrim--lead hero__scrim" aria-hidden="true"></div>
+      <div class="hero__fg" aria-hidden="true"></div>
+      <div class="sc-copy sc-copy--lead hero__copy" data-sc-cue="0 0.6 0">
+        <h1 class="sc-display" data-sc-kinetic="lines">Press any button.</h1>
+        <p class="hero__sub">A vending machine for your office where every product has passed independent lab tests. So nothing in it needs a second thought.</p>
+        <a class="btn hero__cta js-cta" href="#get">Get a machine</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · RECOGNITION -->
+  <section class="pantry" data-sc-act="pin" data-sc-span="2.6" data-sc-drift="#100F0D">
+    <div data-sc-stage>
+      <img class="sc-stage__poster" src="assets/pantry.webp" alt="An office pantry counter under a tube light: biscuit packets, samosas on a steel plate, a two-litre cola and cups of sweet chai.">
+      <div class="sc-scrim sc-scrim--lead" aria-hidden="true"></div>
+      <div class="sc-copy sc-copy--lead lines">
+        <p class="sc-display sc-display--lg" data-sc-cue="0 0.28 0 0.08">11am, 4pm, 9pm. Same pantry.</p>
+        <p class="sc-display sc-display--lg" data-sc-cue="0.24 0.52 0.1 0.08" data-sc-kinetic="lines">Biscuits. Samosas. A cola that's mostly sugar.</p>
+        <p class="sc-display sc-display--lg" data-sc-cue="0.48 0.76 0.1 0.08">Nobody chose them. They were just there.</p>
+        <p class="sc-display sc-display--lg" data-sc-cue="0.72 1 0.1 0.12">The healthy pick? Read every label first.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · TURN -->
+  <section class="sc-section trust" data-sc-drift="#0D1015">
+    <div class="sc-wrap trust__grid">
+      <div class="sc-stack" data-sc-in data-sc-stagger="70">
+        <h2 class="sc-display sc-display--lg">We did the second-guessing.</h2>
+        <p class="sc-lede">One rule decides what gets a slot: the product holds a Trustified certificate, meaning an independent lab has tested that what's inside matches the label.</p>
+        <p class="sc-body">If it hasn't passed, it isn't in the machine. So whatever you press, you already chose well.</p>
+      </div>
+      <figure class="trust__fig" data-sc-reveal="up" data-sc-reveal-at="0.12 0.5">
+        <img src="assets/shelf-b.webp" width="1600" height="900" alt="Cold, unbranded zero-sugar cans standing in a vending machine's spiral coils, beaded with condensation.">
+      </figure>
+    </div>
+  </section>
+
+  <!-- 4 · RANGE (the peak) -->
+  <section class="shelves" id="shelves" data-sc-act="pin" data-sc-span="6" data-sc-drift="#07080B" aria-label="The five shelves">
+    <div data-sc-stage id="shelves-stage">
+      <div class="shelves__cam">
+        <div class="vm" id="vm">
+          <div class="vm__crown"><span class="vm__sign">Sorted<i>.</i></span></div>
+          <div class="vm__body">
+            <div class="vm__glass">
+              <div class="vm__row" id="row-a">
+                <img src="assets/shelf-a.webp" alt="Clear pouches of roasted makhana alternating with kraft-wrapped peanut chikki, each in a steel coil.">
+                <div class="vm__rail"><span class="vm__code">A</span><h3 class="vm__name">Makhana &amp; chikki</h3><p class="vm__fact">Roasted makhana. Peanut chikki. Desk-sized packs.</p></div>
+              </div>
+              <div class="vm__row" id="row-b">
+                <img src="assets/shelf-b.webp" alt="Slim zero-sugar cans in black, silver, white, mint and orange.">
+                <div class="vm__rail"><span class="vm__code">B</span><h3 class="vm__name">Zero-sugar fizz</h3><p class="vm__fact">Cola, lemon-lime, Indian flavours. Zero sugar. Served cold.</p></div>
+              </div>
+              <div class="vm__row" id="row-c">
+                <img src="assets/shelf-c.webp" alt="Chilled yogurt cups with foil lids alternating with protein shake bottles.">
+                <div class="vm__rail"><span class="vm__code">C</span><h3 class="vm__name">Yogurt &amp; shakes</h3><p class="vm__fact">High-protein yogurt and ready-to-drink shakes. Kept chilled.</p></div>
+              </div>
+              <div class="vm__row" id="row-d">
+                <img src="assets/shelf-d.webp" alt="Stacks of protein bars in red, green, blue, yellow and charcoal wrappers.">
+                <div class="vm__rail"><span class="vm__code">D</span><h3 class="vm__name">Protein bars</h3><p class="vm__fact">Bars and wafers, protein first.</p></div>
+              </div>
+              <div class="vm__row" id="row-e">
+                <img src="assets/shelf-e.webp" alt="Snack pouches of protein puffs and baked nachos in bright colours.">
+                <div class="vm__rail"><span class="vm__code">E</span><h3 class="vm__name">Puffs &amp; nachos</h3><p class="vm__fact">Protein puffs, baked nachos. For the salty craving.</p></div>
+              </div>
+              <div class="vm__glare" aria-hidden="true"></div>
+            </div>
+            <div class="vm__side" aria-hidden="true">
+              <div class="vm__led">PRESS ANY</div>
+              <div class="vm__keys"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>?</span></div>
+              <div class="vm__slot"></div>
+              <div class="vm__qr">
+                <svg viewBox="0 0 21 21" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM8 0h1v1H8zM10 0h2v1h-2zM9 1h1v2H9zM11 2h2v1h-2zM8 3h1v1H8zM12 4h1v2h-1zM8 5h3v1H8zM9 7h1v1H9zM11 7h3v1h-3zM0 8h2v1H0zM3 8h3v1H3zM7 8h1v2H7zM15 8h2v1h-2zM18 8h3v1h-3zM1 10h2v1H1zM5 10h1v2H5zM9 9h2v2H9zM12 9h2v1h-2zM16 10h2v2h-2zM19 10h2v1h-2zM0 12h1v1H0zM2 12h2v1H2zM8 12h3v1H8zM13 11h2v2h-2zM18 12h1v2h-1zM8 14h1v2H8zM10 14h3v1h-3zM14 14h2v2h-2zM17 15h3v1h-3zM9 17h2v1H9zM12 16h1v3h-1zM14 17h1v1h-1zM16 17h1v2h-1zM19 17h2v1h-2zM8 19h3v1H8zM13 19h2v2h-2zM17 19h1v2h-1zM19 20h2v1h-2z"/></svg>
+                <b>Not here? Ask for it.</b>
+              </div>
+            </div>
+          </div>
+          <div class="vm__tray" aria-hidden="true"><div>PUSH</div><span></span></div>
+        </div>
+      </div>
+      <div class="sc-copy sc-copy--lead shelves__head" data-sc-cue="0 0.1 0 0.04">
+        <h2 class="sc-display sc-display--lg">Five shelves. No wrong buttons.</h2>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · AGENCY -->
+  <section class="sc-section request" id="request" data-sc-drift="#0D1015">
+    <div class="sc-wrap request__grid">
+      <div class="sc-stack" data-sc-in data-sc-stagger="70">
+        <h2 class="sc-display sc-display--lg">Not on the shelf? Ask the machine.</h2>
+        <p class="sc-lede">Every machine has a QR code on its side. Scan it, name what you want, and if it passes the rule, it's in your machine by next week.</p>
+      </div>
+      <form class="ask" id="ask" method="post" action="#request" data-sc-in novalidate>
+        <label for="ask-item">What should we stock?</label>
+        <div class="ask__row">
+          <input id="ask-item" name="item" type="text" maxlength="40" autocomplete="off" placeholder="Cold brew, kombucha, dark chocolate…" required>
+          <button class="btn" type="submit">Request</button>
+        </div>
+        <p class="ask__err" id="ask-err" role="alert"></p>
+        <div class="chips" aria-label="Examples">
+          <button class="chip" type="button">Cold brew</button>
+          <button class="chip" type="button">Kombucha</button>
+          <button class="chip" type="button">Roasted chana</button>
+          <button class="chip" type="button">Coconut water</button>
+        </div>
+        <ol class="tickets" id="tickets" aria-live="polite"></ol>
+        <p class="ask__note">A demo of the scan-to-request flow. Requests stay on this screen and are not sent anywhere.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- 6 · COMMITMENT -->
+  <section class="close" id="get" data-sc-act="pin" data-sc-span="1.3" data-sc-drift="#0A0C11">
+    <div data-sc-stage>
+      <img class="sc-stage__poster" src="assets/tray.webp" alt="A protein bar waiting in a vending machine's delivery tray, lit from above.">
+      <div class="sc-scrim sc-scrim--lead" aria-hidden="true"></div>
+      <div class="sc-copy sc-copy--lead close__copy">
+        <h2 class="sc-display sc-display--lg" data-sc-cue="0 1 0 0" data-sc-kinetic="lines">Put one in your office.</h2>
+        <p class="sc-lede" data-sc-cue="0 1 0 0">We install it, stock it and refill it. Your team just presses buttons.</p>
+        <a class="btn js-cta js-mail" href="#get" data-sc-cue="0 1 0 0" data-sc-rise="0">Get a machine</a>
+      </div>
+      <footer class="foot">Sorted is a concept in development. Trustified is an independent certification and is not affiliated with Sorted. Product images are illustrative, unbranded renders.</footer>
+    </div>
+  </section>
+
+</main>
+
+<script src="scrollcraft.js"></script>
+<script>
+/* Set this to the inbox that should receive machine requests. */
+const CONTACT_EMAIL = "";
+
+(function () {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fine = matchMedia("(hover: hover) and (pointer: fine)");
+  const small = matchMedia("(max-width: 860px)");
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (t) => t * t * (3 - 2 * t);
+
+  const ROWS = [
+    { code: "A", name: "Makhana & chikki" },
+    { code: "B", name: "Zero-sugar fizz" },
+    { code: "C", name: "Yogurt & shakes" },
+    { code: "D", name: "Protein bars" },
+    { code: "E", name: "Puffs & nachos" },
+  ];
+
+  const shelves = $("#shelves");
+  if (reduce) {
+    shelves.setAttribute("data-sc-act", "flow");
+    shelves.removeAttribute("data-sc-span");
+    document.documentElement.classList.add("rm");
+  }
+
+  // The hero machine is the same object, cloned without its readable copy.
+  const vm = $("#vm");
+  const heroVm = vm.cloneNode(true);
+  heroVm.removeAttribute("id");
+  $$("[id]", heroVm).forEach((n) => n.removeAttribute("id"));
+  $$("img", heroVm).forEach((n) => { n.alt = ""; n.loading = "eager"; });
+  $$("h3", heroVm).forEach((h) => { const s = document.createElement("span"); s.className = h.className; s.textContent = h.textContent; h.replaceWith(s); });
+  $(".hero__machine").appendChild(heroVm);
+
+  const mail = CONTACT_EMAIL
+    ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("A Sorted machine for our office")}`
+    : `mailto:?subject=${encodeURIComponent("A Sorted machine for our office")}`;
+  $$(".js-mail").forEach((a) => (a.href = mail));
+
+  ScrollCraft.mount(document.body);
+
+  /* --------------------------------------------------------- geometry -- */
+  const hero = $("#hero");
+  const heroBg = $(".hero__bg"), heroFg = $(".hero__fg"), heroM = $(".hero__machine"), heroFloor = $(".hero__floor");
+  const stage = $("#shelves-stage");
+  const glare = $$(".vm__glare");
+  let G = {};
+
+  function measure() {
+    const vw = innerWidth, vh = innerHeight;
+    vm.style.transform = "none";
+    const MW = vm.offsetWidth, MH = vm.offsetHeight;
+    const glass = $(".vm__glass", vm);
+    const rows = $$(".vm__row", vm).map((r) => glass.offsetTop + r.offsetTop + vm.clientTop + (r.offsetHeight) / 2);
+    const gx = glass.offsetLeft + glass.offsetWidth / 2;
+    const dock = small.matches ? parseFloat(getComputedStyle(document.documentElement).fontSize) * 7.25 : 0;
+    // hero machine: tall on the right on desktop, low and centred on phones
+    const hs = small.matches ? Math.min((vh * 0.5) / MH, (vw * 0.5) / MW) : Math.min((vh * 0.74) / MH, (vw * 0.3) / MW);
+    const hx = small.matches ? (vw - MW * hs) / 2 : vw * 0.69 - (MW * hs) / 2;
+    const hy = small.matches ? vh - dock - MH * hs - vh * 0.03 : vh * 0.15;
+    G = { vw, vh, MW, MH, rows, gx, dock, hs, hx, hy,
+      s0: Math.min((vh * 0.78) / MH, (vw * (small.matches ? 0.7 : 0.4)) / MW) };
+    heroFloor.style.cssText = `left:${hx - MW * hs * 0.25}px;top:${hy + MH * hs - vh * 0.06}px;width:${MW * hs * 1.5}px;height:${vh * 0.14}px`;
+  }
+
+  function actP(el) {
+    const r = el.getBoundingClientRect();
+    return clamp(-r.top / Math.max(1, r.height - innerHeight));
+  }
+
+  /* --------------------------------------------------------- pointer -- */
+  let mx = 0, my = 0, tx = 0, ty = 0;
+  if (!reduce) addEventListener("pointermove", (e) => {
+    if (!fine.matches) return;
+    tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5;
+  }, { passive: true });
+
+  /* ----------------------------------------------------------- camera -- */
+  const Z = 0.16;            // share of the act spent diving into the glass
+  const WALK = 4.6;          // row units across the walk; the extra 0.6 holds E
+  let current = -1;
+
+  function shelfCamera(p) {
+    const { vw, vh, MW, MH, rows, gx, s0, dock } = G;
+    const cyView = small.matches ? (vh - dock) * 0.5 : vh * 0.5;
+    let s, cx, cy, t;
+    if (p < Z) {
+      const k = smooth(p / Z);
+      s = s0 * Math.pow(1 / s0, k);
+      cx = lerp(MW / 2, gx, k);
+      cy = lerp(MH / 2, rows[0], k);
+      t = k > 0.85 ? 0 : -1;
+    } else {
+      const u = Math.min(4, ((p - Z) / (1 - Z)) * WALK);
+      const i = Math.floor(u), f = u - i;
+      const e = smooth(clamp((f - 0.38) / 0.62));
+      const j = Math.min(i + 1, 4);
+      s = 1; cx = gx; cy = lerp(rows[i], rows[j], e);
+      t = i + e;
+    }
+    vm.style.transform = `translate3d(${(vw / 2 - cx * s).toFixed(1)}px, ${(cyView - cy * s).toFixed(1)}px, 0) scale(${s.toFixed(4)})`;
+    const row = t < 0 ? -1 : Math.round(t);
+    stage.setAttribute("data-sc-verify-state", `${row}:${s.toFixed(2)}:${Math.round(cy)}`);
+    return row;
+  }
+
+  function scrollForRow(i) {
+    if (reduce) return $$(".vm__row", vm)[i].getBoundingClientRect().top + scrollY - innerHeight * 0.2;
+    const q = (i + 0.19) / WALK;
+    const p = Z + q * (1 - Z);
+    return shelves.offsetTop + p * (shelves.offsetHeight - innerHeight);
+  }
+
+  /* -------------------------------------------------------------- LED -- */
+  const led = $("#led"), ledBox = $(".pad__led"), live = $("#pad-live");
+  let ledText = led.textContent, ledHold = 0;
+  function setLed(text, hold = 0) {
+    if (hold) ledHold = performance.now() + hold;
+    else if (performance.now() < ledHold) return;
+    if (text === ledText) return;
+    ledText = text;
+    if (reduce) { led.textContent = text; return; }
+    ledBox.classList.add("is-swap");
+    setTimeout(() => { led.textContent = text; ledBox.classList.remove("is-swap"); }, 160);
+  }
+  const keys = $$(".key[data-key]").filter((k) => k.dataset.key !== "any");
+  function markKey(i) { keys.forEach((k, n) => k.setAttribute("aria-current", n === i ? "true" : "false")); }
+
+  const sections = [
+    [hero, "Press any button"],
+    [$(".pantry"), "Pantry: not sorted"],
+    [$(".trust"), "One rule. No exceptions"],
+    [shelves, null],
+    [$("#request"), "Scan. Ask. Stocked"],
+    [$("#get"), "Ready to vend"],
+  ];
+
+  function vend(i, lucky) {
+    const r = ROWS[i];
+    setLed(lucky ? `${r.code} · good pick. they all are` : `${r.code} · ${r.name}`, 2600);
+    live.textContent = lucky ? `Shelf ${r.code}, ${r.name}. Good pick. They all are.` : `Shelf ${r.code}, ${r.name}.`;
+    markKey(i);
+    scrollTo({ top: scrollForRow(i), behavior: reduce ? "auto" : "smooth" });
+    const row = $$(".vm__row", vm)[i];
+    row.classList.remove("is-vend"); void row.offsetWidth; row.classList.add("is-vend");
+    setTimeout(() => row.classList.remove("is-vend"), 950);
+  }
+  let lastAny = -1;
+  $$(".key").forEach((k) => k.addEventListener("click", () => {
+    if (k.dataset.key === "any") {
+      let i; do { i = Math.floor(Math.random() * 5); } while (i === lastAny);
+      lastAny = i; vend(i, true);
+    } else vend(+k.dataset.key, false);
+  }));
+
+  /* ------------------------------------------------------------ frame -- */
+  function frame() {
+    const { vw, vh, MW, MH, hs, hx, hy } = G;
+    mx += (tx - mx) * 0.08; my += (ty - my) * 0.08;
+
+    // hero: far office, the machine, near leaves, each at its own rate
+    const hp = reduce ? 0 : actP(hero);
+    if (hero.getBoundingClientRect().bottom > 0) {
+      heroBg.style.transform = `translate3d(${(-mx * 14).toFixed(1)}px, ${(-my * 8 - hp * vh * 0.03).toFixed(1)}px, 0) scale(${(1 + hp * 0.05).toFixed(4)})`;
+      const ms = hs * (1 + hp * 0.1);
+      heroM.style.transform = `translate3d(${(hx - MW * hs * hp * 0.05 - mx * 6).toFixed(1)}px, ${(hy - hp * vh * 0.06 - MH * hs * hp * 0.06 - my * 4).toFixed(1)}px, 0) scale(${ms.toFixed(4)})`;
+      heroM.style.transformOrigin = "0 0";
+      heroFg.style.transform = `translate3d(${(mx * 26).toFixed(1)}px, ${(hp * vh * 0.16 + my * 14).toFixed(1)}px, 0) scale(${(1 + hp * 0.14).toFixed(4)})`;
+      glare.forEach((g) => g.style.setProperty("--glare", `${(hp * 22 + mx * 6).toFixed(2)}%`));
+    }
+
+    // shelves
+    let row = -1;
+    if (!reduce) {
+      const sp = actP(shelves);
+      const r = shelves.getBoundingClientRect();
+      if (r.top < vh * 1.2 && r.bottom > -vh * 0.2) row = shelfCamera(sp);
+      glare.forEach((g) => { if (g.closest("#vm")) g.style.setProperty("--glare", `${(sp * 60 - 10).toFixed(2)}%`); });
+    }
+
+    // LED follows where you are
+    let label = sections[0][1];
+    for (const [el, text] of sections) if (el.getBoundingClientRect().top <= vh * 0.5) label = text;
+    const inShelves = shelves.getBoundingClientRect().top <= vh * 0.5 && shelves.getBoundingClientRect().bottom > vh * 0.5;
+    if (inShelves) {
+      if (row >= 0) { setLed(`${ROWS[row].code} · ${ROWS[row].name}`); markKey(row); }
+      else { setLed("Five shelves"); markKey(-1); }
+    } else { setLed(label); markKey(-1); }
+
+    requestAnimationFrame(frame);
+  }
+
+  measure();
+  addEventListener("resize", measure);
+  document.fonts && document.fonts.ready.then(measure);
+  addEventListener("load", measure);
+  requestAnimationFrame(frame);
+
+  /* ---------------------------------------------------------- request -- */
+  const form = $("#ask"), input = $("#ask-item"), list = $("#tickets"), err = $("#ask-err");
+  let n = 0;
+  function nextMonday() {
+    const d = new Date(); const add = ((8 - d.getDay()) % 7) || 7;
+    d.setDate(d.getDate() + add);
+    return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  }
+  $$(".chip").forEach((c) => c.addEventListener("click", () => { input.value = c.textContent; input.focus(); }));
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const item = input.value.trim();
+    if (!item) { err.textContent = "Type what you'd like us to stock."; input.focus(); return; }
+    err.textContent = "";
+    n += 1;
+    const li = document.createElement("li");
+    li.className = "ticket";
+    const no = document.createElement("span"); no.className = "ticket__no"; no.textContent = `#${String(n).padStart(3, "0")}`;
+    const it = document.createElement("span"); it.className = "ticket__item"; it.textContent = item;
+    const eta = document.createElement("span"); eta.className = "ticket__eta";
+    eta.textContent = `Checked against the rule, then in your machine by ${nextMonday()}.`;
+    li.append(no, it, eta);
+    list.prepend(li);
+    while (list.children.length > 3) list.lastChild.remove();
+    input.value = "";
+  });
+})();
+</script>
+</body>
+</html>
